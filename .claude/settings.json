@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Emmanuel/.claude/**)",
+      "Bash(mv msdba *)",
+      "Bash(mv systemd/msdba.service systemd/msdbr.service)",
+      "Bash(git remote *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git add *)"
+    ]
+  }
+}
