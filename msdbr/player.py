@@ -70,12 +70,17 @@ class Player:
         self.window: webview.Window | None = None
         self.loaded_url: str | None = None
         self._stop = threading.Event()
+        self._page_loaded = threading.Event()
 
     def run(self) -> None:
         self.window = webview.create_window(
             "MSDBR", html=self._loading_html(), fullscreen=True
         )
+        self.window.events.loaded += self._on_loaded
         webview.start(func=self._playback_thread, private_mode=False)
+
+    def _on_loaded(self) -> None:
+        self._page_loaded.set()
 
     def _playback_thread(self) -> None:
         retry_delay = INITIAL_RETRY_DELAY_S
@@ -94,11 +99,20 @@ class Player:
     def _display(self, url: MsdbUrl) -> None:
         if self.loaded_url != url.url:
             self.loaded_url = url.url
+            self._page_loaded.clear()
             self.window.load_url(url.url)
-            time.sleep(0.5)  # laisser la page s'initier avant d'injecter le script
+            if not self._page_loaded.wait(timeout=15):
+                log.warning("Timeout chargement page %s", url.url)
+        else:
+            self.window.evaluate_js("window.scrollTo(0, 0);")
+        self.window.evaluate_js("window.__msdbrCycleDone = false;")
         tempo = url.tempo_scroll if url.tempo_scroll > 0 else SCROLL_EDGE_PAUSE_S
         self.window.evaluate_js(
             _scroll_script(url.scroll_speed, tempo, url.display_duration_seconds)
+        )
+        log.info(
+            "Affichage %s (duration=%ss, tempo=%ss, speed=%s)",
+            url.url, url.display_duration_seconds, tempo, url.scroll_speed,
         )
 
     def _wait_for_next(self, url: MsdbUrl) -> None:
@@ -109,9 +123,11 @@ class Player:
         deadline = time.time() + 300
         while time.time() < deadline and not self._stop.is_set():
             done = self.window.evaluate_js("window.__msdbrCycleDone === true")
-            if done:
+            if done is True:
+                log.info("Cycle scroll terminé, page suivante")
                 return
             time.sleep(0.2)
+        log.warning("Timeout cycle scroll (300s) — page suivante forcée")
 
     def _sleep_interruptible(self, seconds: float) -> None:
         self._stop.wait(seconds)
