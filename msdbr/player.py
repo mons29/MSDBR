@@ -21,43 +21,57 @@ PAGE_TRANSITION_MS = 500
 
 
 def _scroll_script(speed_px: int, tempo_s: float, display_duration_s: int) -> str:
-    """Injecté dans la page pour piloter l'auto-scroll et signaler la fin de cycle."""
+    """Injecté dans la page pour piloter l'auto-scroll et signaler la fin de cycle.
+
+    Utilise requestAnimationFrame (cale sur le vsync) + déplacement
+    proportionnel au temps écoulé pour un rendu fluide.
+    """
     return f"""
     (function() {{
         window.__msdbrCycleDone = false;
-        const SPEED = {speed_px};
+        const SPEED_PX_PER_10MS = {speed_px};
+        const PX_PER_MS = SPEED_PX_PER_10MS / 10;
         const TEMPO_MS = {int(tempo_s * 1000)};
-        const TICK_MS = {SCROLL_TICK_MS};
         const DISPLAY_S = {display_duration_s};
-        let waitingAtTop = true;
-        let waitingAtBottom = false;
+        let paused = true;
+        let lastTs = null;
+        let scrollAcc = 0;
 
-        setTimeout(function start() {{
-            waitingAtTop = false;
-            const tick = () => {{
-                const atEnd =
-                    document.documentElement.scrollHeight <= window.innerHeight ||
-                    (window.scrollY + window.innerHeight) >= (document.documentElement.scrollHeight - 2);
-                if (atEnd) {{
-                    if (!waitingAtBottom) {{
-                        waitingAtBottom = true;
-                        setTimeout(tick, TEMPO_MS);
-                        return;
-                    }}
-                    waitingAtBottom = false;
-                    if (DISPLAY_S <= 0) {{
-                        window.__msdbrCycleDone = true;
-                        return;
-                    }}
-                    window.scrollTo(0, 0);
-                    waitingAtTop = true;
-                    setTimeout(() => {{ waitingAtTop = false; setTimeout(tick, TICK_MS); }}, TEMPO_MS);
+        const isAtEnd = () =>
+            document.documentElement.scrollHeight <= window.innerHeight ||
+            (window.scrollY + window.innerHeight) >= (document.documentElement.scrollHeight - 2);
+
+        const pauseAtBottom = () => {{
+            paused = true;
+            setTimeout(() => {{
+                if (DISPLAY_S <= 0) {{
+                    window.__msdbrCycleDone = true;
                     return;
                 }}
-                if (!waitingAtTop) window.scrollBy(0, SPEED);
-                setTimeout(tick, TICK_MS);
-            }};
-            tick();
+                window.scrollTo(0, 0);
+                setTimeout(() => {{ paused = false; lastTs = null; requestAnimationFrame(frame); }}, TEMPO_MS);
+            }}, TEMPO_MS);
+        }};
+
+        const frame = (ts) => {{
+            if (paused) return;
+            if (lastTs === null) lastTs = ts;
+            const dt = ts - lastTs;
+            lastTs = ts;
+            if (isAtEnd()) {{ pauseAtBottom(); return; }}
+            scrollAcc += PX_PER_MS * dt;
+            if (scrollAcc >= 1) {{
+                const step = Math.floor(scrollAcc);
+                window.scrollBy(0, step);
+                scrollAcc -= step;
+            }}
+            requestAnimationFrame(frame);
+        }};
+
+        setTimeout(() => {{
+            if (isAtEnd()) {{ pauseAtBottom(); return; }}
+            paused = false;
+            requestAnimationFrame(frame);
         }}, TEMPO_MS);
     }})();
     """
