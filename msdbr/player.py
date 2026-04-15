@@ -1,6 +1,7 @@
 """Boucle de lecture principale et pilotage du WebView — équivalent PlayerActivity/PlayerViewModel."""
 
 import logging
+import subprocess
 import threading
 import time
 
@@ -18,6 +19,10 @@ SCROLL_TICK_MS = 10
 INITIAL_RETRY_DELAY_S = 5.0
 MAX_RETRY_DELAY_S = 60.0
 PAGE_TRANSITION_MS = 500
+NO_SIGNAL_MARKER = "no-signal.html"
+NO_SIGNAL_DISPLAY_S = 10.0
+NO_SIGNAL_POLL_S = 30.0
+WAKE_DISPLAY_S = 10.0
 
 
 def _scroll_script(speed_px: int, tempo_s: float, display_duration_s: int) -> str:
@@ -85,6 +90,7 @@ class Player:
         self.loaded_url: str | None = None
         self._stop = threading.Event()
         self._page_loaded = threading.Event()
+        self._on_no_signal = False
 
     def run(self) -> None:
         self.window = webview.create_window(
@@ -102,13 +108,65 @@ class Player:
             try:
                 url = self.client.get_next_url(self.msdb_id)
                 retry_delay = INITIAL_RETRY_DELAY_S
-                self._display(url)
-                self._wait_for_next(url)
+                if NO_SIGNAL_MARKER in url.url:
+                    self._handle_no_signal(url)
+                else:
+                    if self._on_no_signal:
+                        self._wake_display()
+                        self._on_no_signal = False
+                    self._display(url)
+                    self._wait_for_next(url)
             except ApiError as exc:
                 log.warning("Erreur API: %s — retry dans %ss", exc, retry_delay)
                 self._show_error(str(exc))
                 time.sleep(retry_delay)
                 retry_delay = min(retry_delay * 2, MAX_RETRY_DELAY_S)
+
+    def _handle_no_signal(self, url: MsdbUrl) -> None:
+        """Affiche no-signal 10s puis éteint HDMI. Tant que le serveur renvoie
+        no-signal, on reste en veille. Une touche clavier réveille l'écran via
+        DPMS (géré par X) — on le rallume 10s puis on coupe de nouveau.
+        """
+        if not self._on_no_signal:
+            log.info("Page no-signal — affichage %ss puis veille HDMI", NO_SIGNAL_DISPLAY_S)
+            self._display(url)
+            self._sleep_interruptible(NO_SIGNAL_DISPLAY_S)
+            if self._stop.is_set():
+                return
+            self._sleep_display()
+            self._on_no_signal = True
+        else:
+            if self._display_is_on():
+                log.info("Écran réveillé par input — affichage %ss", WAKE_DISPLAY_S)
+                self._sleep_interruptible(WAKE_DISPLAY_S)
+                if not self._stop.is_set():
+                    self._sleep_display()
+            else:
+                self._sleep_interruptible(NO_SIGNAL_POLL_S)
+
+    @staticmethod
+    def _sleep_display() -> None:
+        try:
+            subprocess.run(["xset", "dpms", "force", "off"], check=False, timeout=2)
+        except Exception as exc:
+            log.warning("Veille HDMI échouée: %s", exc)
+
+    @staticmethod
+    def _wake_display() -> None:
+        try:
+            subprocess.run(["xset", "dpms", "force", "on"], check=False, timeout=2)
+        except Exception as exc:
+            log.warning("Réveil HDMI échoué: %s", exc)
+
+    @staticmethod
+    def _display_is_on() -> bool:
+        try:
+            result = subprocess.run(
+                ["xset", "q"], capture_output=True, text=True, timeout=2
+            )
+            return "Monitor is On" in result.stdout
+        except Exception:
+            return True
 
     def _display(self, url: MsdbUrl) -> None:
         if self.loaded_url != url.url:
