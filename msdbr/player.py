@@ -199,7 +199,17 @@ class Player:
 
     def _wait_for_next(self, url: MsdbUrl) -> None:
         if url.display_duration_seconds > 0:
-            self._sleep_interruptible(url.display_duration_seconds)
+            refresh = url.rafraichissement if url.rafraichissement > 0 else 0
+            end = time.time() + url.display_duration_seconds
+            while time.time() < end and not self._stop.is_set():
+                remaining = end - time.time()
+                wait = min(remaining, refresh) if refresh > 0 else remaining
+                self._sleep_interruptible(wait)
+                if self._stop.is_set() or time.time() >= end:
+                    return
+                log.info("Rafraîchissement page (interval %ss)", refresh)
+                self.loaded_url = None
+                self._display(url)
             return
         # durée = 0 : attendre que le JS ait posé __msdbrCycleDone
         deadline = time.time() + 300
