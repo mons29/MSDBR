@@ -5,6 +5,7 @@ import subprocess
 import threading
 import time
 
+import requests
 import webview
 
 from . import config
@@ -23,6 +24,8 @@ NO_SIGNAL_MARKER = "no-signal.html"
 NO_SIGNAL_DISPLAY_S = 10.0
 NO_SIGNAL_POLL_S = 30.0
 WAKE_DISPLAY_S = 10.0
+HTTP_ERROR_DISPLAY_S = 5.0
+PRECHECK_TIMEOUT_S = 10.0
 
 
 def _scroll_script(speed_px: int, tempo_s: float, display_duration_s: int) -> str:
@@ -115,6 +118,12 @@ class Player:
                     if self._on_no_signal:
                         self._wake_display()
                         self._on_no_signal = False
+                    http_status = self._precheck(url.url)
+                    if http_status is not None and http_status >= 400:
+                        log.warning("HTTP %s sur %s", http_status, url.url)
+                        self._show_http_error(http_status, url.url)
+                        self._sleep_interruptible(HTTP_ERROR_DISPLAY_S)
+                        continue
                     self._display(url)
                     self._wait_for_next(url)
             except ApiError as exc:
@@ -204,6 +213,45 @@ class Player:
 
     def _sleep_interruptible(self, seconds: float) -> None:
         self._stop.wait(seconds)
+
+    @staticmethod
+    def _precheck(url: str) -> int | None:
+        """HEAD puis GET (certains serveurs rejettent HEAD). Retourne le
+        status HTTP, ou None si erreur réseau — dans ce cas on tente quand
+        même le load_url qui affichera sa propre erreur.
+        """
+        try:
+            resp = requests.head(url, allow_redirects=True, timeout=PRECHECK_TIMEOUT_S)
+            if resp.status_code == 405 or resp.status_code >= 500:
+                resp = requests.get(
+                    url, allow_redirects=True, timeout=PRECHECK_TIMEOUT_S, stream=True
+                )
+                resp.close()
+            return resp.status_code
+        except requests.RequestException:
+            return None
+
+    def _show_http_error(self, status: int, url: str) -> None:
+        if self.window is None:
+            return
+        reason = {
+            503: "Service indisponible",
+            502: "Mauvaise passerelle",
+            504: "Délai d'attente passerelle",
+            500: "Erreur interne du serveur",
+            404: "Page introuvable",
+            403: "Accès refusé",
+            401: "Authentification requise",
+        }.get(status, "Erreur HTTP")
+        html = f"""
+        <html><body style='background:#000;color:#fff;font-family:sans-serif;
+        display:flex;align-items:center;justify-content:center;height:100vh;text-align:center;'>
+        <div><h1>Erreur {status}</h1><p>{reason}</p>
+        <p style='font-size:0.8em;opacity:0.6'>{url}</p>
+        <p>Passage à la page suivante…</p></div></body></html>
+        """
+        self.window.load_html(html)
+        self.loaded_url = None
 
     def _show_error(self, message: str) -> None:
         if self.window is None:
