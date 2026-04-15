@@ -83,9 +83,10 @@ def _scroll_script(speed_px: int, tempo_s: float, display_duration_s: int) -> st
 
 
 class Player:
-    def __init__(self, client: MsdbsClient, msdb_id: str):
+    def __init__(self, client: MsdbsClient, msdb_id: str, enable_sleep: bool = True):
         self.client = client
         self.msdb_id = msdb_id
+        self.enable_sleep = enable_sleep
         self.window: webview.Window | None = None
         self.loaded_url: str | None = None
         self._stop = threading.Event()
@@ -108,7 +109,7 @@ class Player:
             try:
                 url = self.client.get_next_url(self.msdb_id)
                 retry_delay = INITIAL_RETRY_DELAY_S
-                if NO_SIGNAL_MARKER in url.url:
+                if self.enable_sleep and NO_SIGNAL_MARKER in url.url:
                     self._handle_no_signal(url)
                 else:
                     if self._on_no_signal:
@@ -233,4 +234,8 @@ def start() -> None:
         raise SystemExit(
             "Configuration manquante. Définir api_base_url et msdb_id dans ~/.config/msdbr/config.json"
         )
-    Player(MsdbsClient(base_url), msdb_id).run()
+    Player(
+        MsdbsClient(base_url),
+        msdb_id,
+        enable_sleep=bool(cfg.get("enable_sleep", True)),
+    ).run()
