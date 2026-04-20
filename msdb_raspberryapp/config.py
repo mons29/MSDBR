@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 _CONFIG_PATH = Path(
-    os.environ.get("MSDBR_CONFIG", Path.home() / ".config" / "msdbr" / "config.json")
+    os.environ.get("MSDB_RASPBERRYAPP_CONFIG", Path.home() / ".config" / "msdb-raspberryapp" / "config.json")
 )
 
 

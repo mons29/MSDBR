@@ -1,4 +1,4 @@
-# Historique de conversation — MSDBA / portage Linux (MSDBR)
+# Historique de conversation — MSDBA / portage Linux (MSDB-RaspberryApp)
 
 Résumé chronologique de la session Claude Code ayant produit le projet. À lire avant de reprendre le travail pour comprendre le contexte et les décisions.
 
@@ -39,10 +39,10 @@ Voir `CLAUDE.md` et `README.md` pour les détails techniques à jour.
 - Fetch `GET /api/scheduler/next` + boucle d'affichage + retry exponentiel.
 - Auto-scroll via JS injecté dans la page (miroir du runnable Kotlin).
 - `tempoScroll` appliqué si > 0.
-- `displayDurationSeconds == 0` → un cycle, signal via `window.__msdbrCycleDone`.
+- `displayDurationSeconds == 0` → un cycle, signal via `window.__msdbRaspberryAppCycleDone`.
 - Page d'erreur locale sur échec API.
-- Config persistée dans `~/.config/msdbr/config.json` (pas d'UI Setup pour l'instant).
-- Unit systemd prête (`systemd/msdbr.service`).
+- Config persistée dans `~/.config/msdb-raspberryapp/config.json` (pas d'UI Setup pour l'instant).
+- Unit systemd prête (`systemd/msdb-raspberryapp.service`).
 
 **Backlog non porté** (par ordre de priorité utilisateur) :
 1. No-signal + veille HDMI (`vcgencmd display_power 0/1`) + réveil sur touche.
@@ -53,7 +53,7 @@ Voir `CLAUDE.md` et `README.md` pour les détails techniques à jour.
 
 ## 4. Points techniques à ne pas oublier
 
-- **Contrat API partagé** : toute évolution du DTO doit être répercutée dans les deux modèles (`../MSDBA/.../data/model/MsdbUrl.kt` **et** `msdbr/models.py`).
+- **Contrat API partagé** : toute évolution du DTO doit être répercutée dans les deux modèles (`../MSDBA/.../data/model/MsdbUrl.kt` **et** `msdb_raspberryapp/models.py`).
 - **Threading pywebview** : `webview.start(func=...)` démarre GTK sur le main thread, `func` tourne dans un worker. Tout accès à `self.window` doit se faire depuis ce worker.
 - **Endpoint `/api/app/latest` attendu** (même contrat des deux côtés quand porté) :
   ```json
@@ -64,7 +64,7 @@ Voir `CLAUDE.md` et `README.md` pour les détails techniques à jour.
 ## 5. Préférences utilisateur notées pendant la session
 
 - Préfère qu'on aille à l'essentiel, pas de résumés trop longs.
-- Cible hardware : Pi 2 Model B pour les tests, Pi Zero 2W envisagé en production.
+- Cible hardware : Pi 4 pour le dev, Pi Zero 2W envisagé en production.
 - Développement : Windows 11 + VS Code. Auparavant : Android Studio pour la version Kotlin.
 
 ## 6. Prochaine étape suggérée
@@ -72,6 +72,6 @@ Voir `CLAUDE.md` et `README.md` pour les détails techniques à jour.
 1. Flasher Raspberry Pi OS Bookworm (with desktop, 32-bit) via Pi Imager.
 2. SSH activé, copier le projet sur le Pi.
 3. Suivre le `README.md` pour installer les deps système + venv.
-4. Premier run manuel : `DISPLAY=:0 venv/bin/python -m msdbr`.
+4. Premier run manuel : `DISPLAY=:0 venv/bin/python -m msdb_raspberryapp`.
 5. Si OK, activer le service systemd.
 6. Implémenter en priorité le point 1 du backlog (no-signal + veille HDMI) — c'est là que Linux est plus capable qu'Android TV.

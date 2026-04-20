@@ -1,6 +1,6 @@
-# MSDBR (Raspberry Pi)
+# MSDB-RaspberryApp (Raspberry Pi)
 
-POC du client MSDBA porté sur Linux / Raspberry Pi (MSDBR = MSDB Raspberry). Même contrat API que la version Android — consomme `GET /api/scheduler/next` et affiche l'URL planifiée en plein écran avec auto-scroll.
+POC du client MSDBA porté sur Linux / Raspberry Pi (MSDB-RaspberryApp). Même contrat API que la version Android — consomme `GET /api/scheduler/next` et affiche l'URL planifiée en plein écran avec auto-scroll.
 
 ## Statut
 
@@ -25,9 +25,9 @@ Non implémenté (à porter depuis l'app Android) :
 ## Installation
 
 ```bash
-sudo mkdir -p /opt/msdbr && sudo chown $USER /opt/msdbr
-git clone <repo> /opt/msdbr
-cd /opt/msdbr
+sudo mkdir -p /opt/msdb-raspberryapp && sudo chown $USER /opt/msdb-raspberryapp
+git clone <repo> /opt/msdb-raspberryapp
+cd /opt/msdb-raspberryapp
 python3 -m venv venv
 venv/bin/pip install -r requirements.txt
 ```
@@ -35,8 +35,8 @@ venv/bin/pip install -r requirements.txt
 ## Configuration
 
 ```bash
-mkdir -p ~/.config/msdbr
-cat > ~/.config/msdbr/config.json <<EOF
+mkdir -p ~/.config/msdb-raspberryapp
+cat > ~/.config/msdb-raspberryapp/config.json <<EOF
 {
   "api_base_url": "http://192.168.1.100:5000",
   "msdb_id": "DEVICE_LOBBY_001"
@@ -47,13 +47,13 @@ EOF
 ## Lancement manuel
 
 ```bash
-DISPLAY=:0 venv/bin/python -m msdbr
+DISPLAY=:0 venv/bin/python -m msdb_raspberryapp
 ```
 
 ## Lancement au démarrage (systemd)
 
 ```bash
-sudo cp systemd/msdbr.service /etc/systemd/system/
-sudo systemctl enable --now msdbr
-journalctl -u msdbr -f
+sudo cp systemd/msdb-raspberryapp.service /etc/systemd/system/
+sudo systemctl enable --now msdb-raspberryapp
+journalctl -u msdb-raspberryapp -f
 ```

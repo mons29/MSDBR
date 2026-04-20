@@ -1,4 +1,4 @@
-"""Point d'entrée : `python -m msdbr` lance le lecteur (ou le setup si config absente)."""
+"""Point d'entrée : `python -m msdb_raspberryapp` lance le lecteur (ou le setup si config absente)."""
 
 import logging
 

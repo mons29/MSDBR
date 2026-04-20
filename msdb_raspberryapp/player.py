@@ -36,7 +36,7 @@ def _scroll_script(speed_px: int, tempo_s: float, display_duration_s: int) -> st
     """
     return f"""
     (function() {{
-        window.__msdbrCycleDone = false;
+        window.__msdbRaspberryAppCycleDone = false;
         const SPEED_PX_PER_10MS = {speed_px};
         const PX_PER_MS = SPEED_PX_PER_10MS / 10;
         const TEMPO_MS = {int(tempo_s * 1000)};
@@ -53,7 +53,7 @@ def _scroll_script(speed_px: int, tempo_s: float, display_duration_s: int) -> st
             paused = true;
             setTimeout(() => {{
                 if (DISPLAY_S <= 0) {{
-                    window.__msdbrCycleDone = true;
+                    window.__msdbRaspberryAppCycleDone = true;
                     return;
                 }}
                 window.scrollTo(0, 0);
@@ -98,7 +98,7 @@ class Player:
 
     def run(self) -> None:
         self.window = webview.create_window(
-            "MSDBR", html=self._loading_html(), fullscreen=True
+            "MSDB-RaspberryApp", html=self._loading_html(), fullscreen=True
         )
         self.window.events.loaded += self._on_loaded
         webview.start(func=self._playback_thread, private_mode=False)
@@ -187,7 +187,7 @@ class Player:
                 log.warning("Timeout chargement page %s", url.url)
         else:
             self.window.evaluate_js("window.scrollTo(0, 0);")
-        self.window.evaluate_js("window.__msdbrCycleDone = false;")
+        self.window.evaluate_js("window.__msdbRaspberryAppCycleDone = false;")
         tempo = url.tempo_scroll if url.tempo_scroll > 0 else SCROLL_EDGE_PAUSE_S
         self.window.evaluate_js(
             _scroll_script(url.scroll_speed, tempo, url.display_duration_seconds)
@@ -211,10 +211,10 @@ class Player:
                 self.loaded_url = None
                 self._display(url)
             return
-        # durée = 0 : attendre que le JS ait posé __msdbrCycleDone
+        # durée = 0 : attendre que le JS ait posé __msdbRaspberryAppCycleDone
         deadline = time.time() + 300
         while time.time() < deadline and not self._stop.is_set():
-            done = self.window.evaluate_js("window.__msdbrCycleDone === true")
+            done = self.window.evaluate_js("window.__msdbRaspberryAppCycleDone === true")
             if done is True:
                 log.info("Cycle scroll terminé, page suivante")
                 return
@@ -290,7 +290,7 @@ def start() -> None:
     msdb_id = cfg.get("msdb_id")
     if not base_url or not msdb_id:
         raise SystemExit(
-            "Configuration manquante. Définir api_base_url et msdb_id dans ~/.config/msdbr/config.json"
+            "Configuration manquante. Définir api_base_url et msdb_id dans ~/.config/msdb-raspberryapp/config.json"
         )
     Player(
         MsdbsClient(base_url),

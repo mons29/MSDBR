@@ -1,4 +1,4 @@
-"""Fenêtre de configuration MSDBR (équivalent SetupActivity côté Android)."""
+"""Fenêtre de configuration MSDB-RaspberryApp (équivalent SetupActivity côté Android)."""
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -8,7 +8,7 @@ from . import config
 
 def _build_ui(root: tk.Tk) -> None:
     cfg = config.load()
-    root.title("MSDBR — Configuration")
+    root.title("MSDB-RaspberryApp — Configuration")
     root.geometry("480x260")
     root.resizable(False, False)
 
@@ -42,7 +42,7 @@ def _build_ui(root: tk.Tk) -> None:
             "msdb_id": msdb_id,
             "enable_sleep": bool(sleep_var.get()),
         })
-        status.config(text="Configuration enregistrée. Redémarrez MSDBR pour appliquer.")
+        status.config(text="Configuration enregistrée. Redémarrez MSDB-RaspberryApp pour appliquer.")
 
     btns = ttk.Frame(frame)
     btns.grid(row=4, column=0, columnspan=2, pady=12)

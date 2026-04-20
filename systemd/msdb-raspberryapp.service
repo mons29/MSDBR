@@ -1,5 +1,5 @@
 [Unit]
-Description=MSDBR display client
+Description=MSDB-RaspberryApp display client
 After=network-online.target graphical.target
 Wants=network-online.target
 
@@ -8,8 +8,8 @@ Type=simple
 User=pi
 Environment=DISPLAY=:0
 Environment=PYTHONUNBUFFERED=1
-WorkingDirectory=/opt/msdbr
-ExecStart=/opt/msdbr/venv/bin/python -m msdbr
+WorkingDirectory=/opt/msdb-raspberryapp
+ExecStart=/opt/msdb-raspberryapp/venv/bin/python -m msdb_raspberryapp
 Restart=always
 RestartSec=5
 

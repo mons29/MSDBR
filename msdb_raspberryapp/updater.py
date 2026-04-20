@@ -1,8 +1,8 @@
-"""Auto-update MSDBR piloté par MSDBS (endpoint /api/app/latest-linux).
+"""Auto-update MSDB-RaspberryApp piloté par MSDBS (endpoint /api/app/latest-linux).
 
 Compare la version locale (fichier VERSION à la racine du repo) à la version
 distante renvoyée par MSDBS. Si différente : `git pull`, `pip install`, puis
-redémarre openbox (qui relance MSDBR via son autostart).
+redémarre openbox (qui relance MSDB-RaspberryApp via son autostart).
 """
 
 import logging
@@ -73,5 +73,5 @@ def start_update_loop(base_url: str, interval_s: int) -> None:
                 log.exception("Erreur check MAJ")
             time.sleep(max(interval_s, 30))
 
-    threading.Thread(target=loop, daemon=True, name="msdbr-updater").start()
+    threading.Thread(target=loop, daemon=True, name="msdb-raspberryapp-updater").start()
     log.info("Auto-update activé (intervalle %ss)", interval_s)
